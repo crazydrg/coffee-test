@@ -2,157 +2,130 @@ import "CoreLibs/graphics"
 import "CoreLibs/sprites"
 import "CoreLibs/crank"
 import "CoreLibs/timer"
+import "gameroom"
 
 local gfx <const> = playdate.graphics
+local snd <const> = playdate.sound
 local titleImage = gfx.image.new("title.png")
-local currentScreen = "title" -- State variable to track the current screen
-local transitionProgress = 0 -- Variable to track transition progress
-local transitionSpeed = 5 -- Speed of the transition, increased for faster effect
-local countdown = 5 -- Countdown from 5 to 1
-local countdownTimer = nil -- Timer for the countdown
-local gameTimer = nil -- Timer for the 60-second countdown
+local currentScreen = "title"
+local transitionProgress = 0
+local transitionSpeed = 5
+local showWelcome = true
+local countdown = 5
+local countdownTimer
+local bgMusicPlaying = false
+local stopCheckingMusic = false
+
+-- Load your sound files
+local bgMusic = snd.fileplayer.new("bg.wav")
+local etSound = snd.fileplayer.new("et.wav")
+
+function setup()
+    if titleImage == nil then
+        print("Failed to load title.png. Please check if the file is in the correct directory and named correctly.")
+    end
+
+    if bgMusic then
+        print("Background music loaded")
+        bgMusic:play()
+        bgMusicPlaying = true
+    else
+        print("Failed to load bg.wav. Please check if the file is in the correct directory and named correctly.")
+    end
+
+    if etSound then
+        print("Sound effect loaded")
+    else
+        print("Failed to load et.wav. Please check if the file is in the correct directory and named correctly.")
+    end
+end
+
+function checkMusic()
+    if not stopCheckingMusic and bgMusic and not bgMusic:isPlaying() and bgMusicPlaying then
+        bgMusic:play()
+    end
+end
+
+function startCountdown()
+    showWelcome = false -- Hide the welcome message
+    countdown = 5 -- Reset countdown
+    countdownTimer = playdate.timer.new(1000, function()
+        countdown = countdown - 1
+        if countdown <= 0 then
+            bgMusic:stop() -- Stop the music
+            stopCheckingMusic = true -- Stop checking the music
+            countdownTimer:remove() -- Stop timer when countdown reaches 0
+            currentScreen = "gameRoom" -- Transition to game room
+        end
+    end)
+    countdownTimer.repeats = true -- Set the timer to repeat
+end
 
 function playdate.update()
-    gfx.clear() -- Clear the screen
+    gfx.clear()
 
     if currentScreen == "title" then
-        if titleImage == nil then
-            print("Failed to load title.png. Please check if the file is in the correct directory and named correctly.")
-        else
-            gfx.setImageDrawMode(gfx.kDrawModeCopy) -- Default drawing mode for the image
-            titleImage:draw(15, -65) -- Adjust the coordinates to center the image
+        if titleImage then
+            gfx.setImageDrawMode(gfx.kDrawModeCopy)
+            titleImage:draw(15, -65)
         end
 
-        gfx.setImageDrawMode(gfx.kDrawModeFillWhite) -- Set the draw mode to fill with white for text
-        gfx.setFont(gfx.getSystemFont()) -- Use system font
-        gfx.setColor(gfx.kColorWhite) -- Set text color to white
-
-        gfx.drawText("Press A to Start", 140, 180) -- Adjusted coordinates for a more centered, lower position
+        gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
+        gfx.setFont(gfx.getSystemFont())
+        gfx.setColor(gfx.kColorWhite)
+        gfx.drawText("Press A to Start", 140, 180)
 
     elseif currentScreen == "transition" then
         transitionProgress = transitionProgress + transitionSpeed
 
         gfx.setImageDrawMode(gfx.kDrawModeCopy)
 
-        -- Move the title screen out
-        if titleImage ~= nil then
-            titleImage:draw(15 - transitionProgress, -65) -- Swipe the title image left
+        if titleImage then
+            titleImage:draw(15 - transitionProgress, -65)
         end
 
-        gfx.drawText("Press A to Start", 140 - transitionProgress, 180) -- Swipe the text left
+        gfx.drawText("Press A to Start", 140 - transitionProgress, 180)
 
-        -- Center Coffee Shop Text
-        gfx.drawText("Welcome to the Coffee Shop!", 100 + (transitionProgress / 2), 120) -- Slide in the coffee shop screen
+        local coffeeShopTextX = 100 + (400 - transitionProgress)
+        gfx.drawText("Welcome to the Coffee Shop!", coffeeShopTextX, 120)
 
-        if transitionProgress >= 400 then -- Once the transition is done, switch to the coffee shop
-            currentScreen = "countdown"
-            transitionProgress = 0 -- Reset transition progress for the next screen
-            countdownTimer = playdate.timer.keyRepeatTimerWithDelay(0, 1000, function()
-                countdown = countdown - 1
-                if countdown <= 0 then
-                    currentScreen = "game"
-                    countdown = 5 -- Reset countdown for next use
-                    countdownTimer:remove() -- Remove the countdown timer
-                    gameTimer = playdate.timer.new(60000, function() print("Game over!") end)
-                end
-            end)
+        if transitionProgress >= 400 then
+            currentScreen = "coffeeShop"
+            transitionProgress = 0
+            playdate.timer.performAfterDelay(2000, startCountdown) -- Wait 2 seconds before starting countdown
         end
 
-    elseif currentScreen == "countdown" then
-        gfx.drawText("Welcome to the Coffee Shop!", 100, 120)
-        gfx.drawText(tostring(countdown), 200, 160)
-
-    elseif currentScreen == "game" then
-        if gameTimer ~= nil then
-            local remainingTime = math.floor((gameTimer.duration - gameTimer.timeElapsed) / 1000)
-            gfx.drawText("Time: " .. tostring(remainingTime), 10, 10)
-        end
-    end
-
-    playdate.timer.updateTimers()
-end
-
-function playdate.AButtonDown()
-    if currentScreen == "title" then
-        currentScreen = "transition" -- Start transition to the coffee shop screen
-    end
-end
-import "CoreLibs/graphics"
-import "CoreLibs/sprites"
-import "CoreLibs/crank"
-import "CoreLibs/timer"
-
-local gfx <const> = playdate.graphics
-local titleImage = gfx.image.new("title.png")
-local currentScreen = "title" -- State variable to track the current screen
-local transitionProgress = 0 -- Variable to track transition progress
-local transitionSpeed = 5 -- Speed of the transition, increased for faster effect
-local countdown = 5 -- Countdown from 5 to 1
-local countdownTimer = nil -- Timer for the countdown
-local gameTimer = nil -- Timer for the 60-second countdown
-
-function playdate.update()
-    gfx.clear() -- Clear the screen
-
-    if currentScreen == "title" then
-        if titleImage == nil then
-            print("Failed to load title.png. Please check if the file is in the correct directory and named correctly.")
+    elseif currentScreen == "coffeeShop" then
+        if showWelcome then
+            gfx.drawText("Welcome to the Coffee Shop!", 100, 120)
         else
-            gfx.setImageDrawMode(gfx.kDrawModeCopy) -- Default drawing mode for the image
-            titleImage:draw(15, -65) -- Adjust the coordinates to center the image
+            if countdown > 0 then
+                gfx.drawText("Your shift starts in...", 120, 110)
+                gfx.drawText(tostring(countdown), 200, 130)
+            else
+                gfx.drawText("Your shift starts now!", 120, 120)
+                playdate.timer.performAfterDelay(1000, function()
+                    currentScreen = "gameRoom" -- Transition to the game room
+                end)
+            end
         end
 
-        gfx.setImageDrawMode(gfx.kDrawModeFillWhite) -- Set the draw mode to fill with white for text
-        gfx.setFont(gfx.getSystemFont()) -- Use system font
-        gfx.setColor(gfx.kColorWhite) -- Set text color to white
-
-        gfx.drawText("Press A to Start", 140, 180) -- Adjusted coordinates for a more centered, lower position
-
-    elseif currentScreen == "transition" then
-        transitionProgress = transitionProgress + transitionSpeed
-
-        gfx.setImageDrawMode(gfx.kDrawModeCopy)
-
-        -- Move the title screen out
-        if titleImage ~= nil then
-            titleImage:draw(15 - transitionProgress, -65) -- Swipe the title image left
-        end
-
-        gfx.drawText("Press A to Start", 140 - transitionProgress, 180) -- Swipe the text left
-
-        -- Center Coffee Shop Text
-        gfx.drawText("Welcome to the Coffee Shop!", 100 + (transitionProgress / 2), 120) -- Slide in the coffee shop screen
-
-        if transitionProgress >= 400 then -- Once the transition is done, switch to the coffee shop
-            currentScreen = "countdown"
-            transitionProgress = 0 -- Reset transition progress for the next screen
-            countdownTimer = playdate.timer.keyRepeatTimerWithDelay(0, 1000, function()
-                countdown = countdown - 1
-                if countdown <= 0 then
-                    currentScreen = "game"
-                    countdown = 5 -- Reset countdown for next use
-                    countdownTimer:remove() -- Remove the countdown timer
-                    gameTimer = playdate.timer.new(60000, function() print("Game over!") end)
-                end
-            end)
-        end
-
-    elseif currentScreen == "countdown" then
-        gfx.drawText("Welcome to the Coffee Shop!", 100, 120)
-        gfx.drawText(tostring(countdown), 200, 160)
-
-    elseif currentScreen == "game" then
-        if gameTimer ~= nil then
-            local remainingTime = math.floor((gameTimer.duration - gameTimer.timeElapsed) / 1000)
-            gfx.drawText("Time: " .. tostring(remainingTime), 10, 10)
-        end
+    elseif currentScreen == "gameRoom" then
+        updateGameRoom()
     end
 
-    playdate.timer.updateTimers()
+    playdate.timer.updateTimers() -- Make sure timers are updated
+    checkMusic() -- Check if music is playing and restart if necessary
 end
 
 function playdate.AButtonDown()
     if currentScreen == "title" then
-        currentScreen = "transition" -- Start transition to the coffee shop screen
+        if etSound then
+            etSound:play()
+            print("Sound effect played")
+        end
+        currentScreen = "transition"
     end
 end
+
+setup()
