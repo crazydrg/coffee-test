@@ -2,7 +2,7 @@ import "CoreLibs/graphics"
 import "CoreLibs/sprites"
 import "CoreLibs/crank"
 import "CoreLibs/timer"
-import "gameroom"
+
 
 local gfx <const> = playdate.graphics
 local snd <const> = playdate.sound
@@ -52,14 +52,19 @@ function startCountdown()
     countdownTimer = playdate.timer.new(1000, function()
         countdown = countdown - 1
         if countdown <= 0 then
-            bgMusic:stop() -- Stop the music
+            if bgMusic then
+                bgMusic:stop() -- Stop the music
+            end
             stopCheckingMusic = true -- Stop checking the music
-            countdownTimer:remove() -- Stop timer when countdown reaches 0
+            if countdownTimer then
+                countdownTimer:remove() -- Stop timer when countdown reaches 0
+            end
             currentScreen = "gameRoom" -- Transition to game room
         end
     end)
     countdownTimer.repeats = true -- Set the timer to repeat
 end
+
 
 function playdate.update()
     gfx.clear()
